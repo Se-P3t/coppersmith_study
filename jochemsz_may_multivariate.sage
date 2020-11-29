@@ -147,13 +147,14 @@ def jochemsz_may_multivariate_mod(pol, *, X_, m, t=0, **kwds):
             det *= mono(*X_) * N**(m-k)
             polys.append(g)
 
-    #if det >= N**(m*(len(monos)+1-n)):
-    if det.nbits() >= N.nbits()*(m*(len(monos)+1-n)):
-        raise ValueError("Theoretically unsolvable.")
-
     nrows = len(polys)
     ncols = len(monos)
     verbose(f"dim = ({nrows}, {ncols})", level=1, caller_name='param')
+
+    #if det >= N**(m*(len(monos)+1-n)):
+    if det.nbits() >= N.nbits()*(m*(len(monos)+1-n)):
+        print((det.nbits() / (N.nbits()*(m*(len(monos)+1-n)))).n())
+        #raise ValueError("Theoretically unsolvable.")
 
     M = Matrix(ZZ, nrows, ncols)
     for i in srange(M.nrows()):
@@ -319,9 +320,8 @@ def jochemsz_may_multivariate(pol, *, X_, m, t=0, **kwds):
 
     x_ = PR.gens()
     d_ = pol.degrees()
-    xX_ = tuple(x*X for x, X in zip(x_, X_))
 
-    for offset in product(*(srange(dj) for dj in reversed(d_))):
+    for offset in product(*(srange(dj+1) for dj in reversed(d_))):
         offset = offset[::-1]
         if pol(*offset) != 0:
             f = pol(*(x+xoffset for x, xoffset in zip(x_, offset)))
@@ -344,6 +344,8 @@ def jochemsz_may_multivariate(pol, *, X_, m, t=0, **kwds):
             while gcd(a0, X_[j]) != 1:
                 X_[j] = next_prime(X_[j], proof=False)
             verbose(f"X[{j}] = 0x{X_[j]:x}", level=2, caller_name='param update')
+
+    xX_ = tuple(x*X for x, X in zip(x_, X_))
 
     W = max(abs(coeff) for coeff in pol(*xX_).coefficients())
     W += (1-W) % abs(a0)
@@ -386,10 +388,16 @@ def jochemsz_may_multivariate(pol, *, X_, m, t=0, **kwds):
     ncols = len(monos)
     verbose(f"dim = ({nrows}, {ncols})", level=1, caller_name='param')
 
+    det = 1
     M = Matrix(ZZ, nrows, ncols)
     for i in srange(M.nrows()):
         for j in srange(M.ncols()):
             M[i, j] = polys[i](*xX_).monomial_coefficient(monos[j])
+        det *= M[i, i]
+
+    if det >= R**(ncols+2-n):
+        print((det.nbits() / (ncols+2-n) / R.nbits()).n())
+        if not DEBUG: raise ValueError('small m')
 
     verbose('Matrix M', level=3, caller_name='matrix overview')
     matrix_overview(M, level=3)
@@ -403,11 +411,12 @@ def jochemsz_may_multivariate(pol, *, X_, m, t=0, **kwds):
     hs = [PR(row*v) for row in B]
 
     if DEBUG:
+        sols1 = [x0-xoffset for x0, xoffset in zip(sols, offset)]
         for i, h in enumerate(hs):
-            print(i, h(*sols) % R == 0, h(*sols) == 0)
+            print(i, h(*sols1) % R == 0, h(*sols1) == 0)
 
-        if hs[0](*sols) == 0:
-            __import__('IPython').embed()
+        #if hs[0](*sols1) == 0:
+        __import__('IPython').embed()
 
     roots = set()
     for rt in solve_hs_resultant([f] + hs[:n-1]):

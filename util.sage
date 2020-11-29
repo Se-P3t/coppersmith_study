@@ -48,14 +48,12 @@ def iroot(number, exponent):
     Return the integer root of number and boolean value that is True iff
     the root is exact
     """
-    from sage.symbolic.ring import SymbolicRing
-
     root = number**(1/exponent)
     if root.parent() == RationalField():
         return (ZZ(root), True)
-    elif root.parent() == SymbolicRing():
+    elif root.parent() == SR:
         return (ZZ(root.round()), False)
-    raise TypeError("sth wrong, please create an issue")
+    raise TypeError
 
 
 def matrix_overview(BB, level=2, bound = None):
